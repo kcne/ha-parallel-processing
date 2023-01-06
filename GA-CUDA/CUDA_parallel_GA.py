@@ -1,13 +1,42 @@
 #-------- Implementation of basic GPU-parallel Genetic Algorithm for with python CUDA using Numba  ---------#
 
 import numpy as np
-from numba import cuda
+from numba import cuda,jit,vectorize,njit
 import time
 import random
 import math
+from numpy import sin, cos, tan ,cosh, tanh, sinh, abs, exp, mean, pi, prod, sqrt, sum
 
 #-------- Verify CUDA access  ---------#
 print(cuda.gpus)
+@jit
+def ackley(x,n):
+      sum_sq = 0.0
+      sum_cos = 0.0
+      for i in range(0,n):
+          sum_sq += x[i]
+          sum_cos += np.cos(2 * np.pi * x[i])
+      return -20 * np.exp(-0.2 * np.sqrt(sum_sq / n)) - np.exp(sum_cos / n) + 20 + np.e
+# @cuda.jit
+  #@jit(target_backend='cuda')
+# @cuda.jit
+# def ackley( x,n, a=20, b=0.2, c=2*pi ):
+#     x = np.asarray_chkfinite(x)  # ValueError if any NaN or Inf
+#     # n = np.len(x)
+#     s1 = sum( x**2 )
+#     s2 = sum( cos( c * x ))
+#     return -a*exp( -b*sqrt( s1 / n )) - exp( s2 / n ) + a + exp(1)
+
+
+
+
+# @njit
+def calculateFitness(objf,chromosomes,fitnesses):
+    
+    trace=0.0
+    for i in range(chromosomes.shape[0]):
+      trace+= ackley(fitnesses[i],chrom_size) 
+    return fitnesses+trace
 
 
 #-------- Parallel kernel function using CUDA  ---------#
@@ -24,12 +53,18 @@ def eval_genomes_kernel(chromosomes, fitnesses, pop_length, chrom_length):
   if pos < pop_length:  # Check array boundaries
   # in this example the fitness of an individual is computed by an arbitary set of algebraic operations on the chromosome
     num_loops = 3000
-    for i in range(num_loops):
-      fitnesses[pos] += chromosomes[pos*chrom_length + 1] # do the fitness evaluation
-    for i in range(num_loops):
-      fitnesses[pos] -= chromosomes[pos*chrom_length + 2]
-    for i in range(num_loops):
-      fitnesses[pos] += chromosomes[pos*chrom_length + 3]
+
+  
+  
+  for i in range(0,pop_length):
+    fitnesses[i]+=ackley(chromosomes[i],chrom_size)
+    # calculateFitness(ackley,chromosomes,fitnesses)
+# do the fitness evaluation
+      # print(fitnesses[pos])
+    # for i in range(num_loops):
+    #   fitnesses[pos] -= chromosomes[pos*chrom_length + 2]
+    # for i in range(num_loops):
+    #   fitnesses[pos] += chromosomes[pos*chrom_length + 3]
 
     if (fitnesses[pos] < 0):
       fitnesses[pos] = 0
@@ -39,13 +74,22 @@ def eval_genomes_kernel(chromosomes, fitnesses, pop_length, chrom_length):
 def eval_genomes_plain(chromosomes, fitnesses):
   for i in range(len(chromosomes)):
     # in this example the fitness of an individual is computed by an arbitary set of algebraic operations on the chromosome
-    num_loops = 3000
-    for j in range(num_loops):
-      fitnesses[i] += chromosomes[i][1] # do the fitness evaluation
-    for j in range(num_loops):
-      fitnesses[i] -= chromosomes[i][2]
-    for j in range(num_loops):
-      fitnesses[i] += chromosomes[i][3]
+    # num_loops = 3000
+    # for j in range(num_loops):
+    # @jit(nopython=False)
+    def ackley(x,n):
+        sum_sq = 0.0
+        sum_cos = 0.0
+        for i in range(0,n):
+            sum_sq += x[i] ** 2
+            sum_cos += np.cos(2 * np.pi * x[i])
+        return -20 * np.exp(-0.2 * np.sqrt(sum_sq / n)) - np.exp(sum_cos / n) + 20 + np.e
+    fitnesses[i] = ackley(chromosomes[i],chrom_size) # do the fitness evaluation
+    print(f"{i}:{fitnesses[i]}")
+    # for j in range(num_loops):
+    #   fitnesses[i] -= chromosomes[i][2]
+    # for j in range(num_loops):
+    #   fitnesses[i] += chromosomes[i][3]
 
     if (fitnesses[i] < 0):
       fitnesses[i] = 0
@@ -131,7 +175,7 @@ def next_generation(chromosomes, fitnesses):
   
 #-------- Initialize Population  ---------#
 random.seed(1111)
-pop_size = 5000
+pop_size = 1000
 chrom_size = 10
 num_generations = 5
 fitnesses = np.zeros(pop_size, dtype=np.float32)

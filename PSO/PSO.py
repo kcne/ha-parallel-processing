@@ -5,17 +5,35 @@ from tqdm import tqdm
 
 
 # Optimization Test Functions
-def rastrigin(pop):
+def rastrigin(pop,device):
     dim = pop.size(dim=-1)
     return (10 * dim) + \
            torch.sum(torch.pow(pop, 2) - (10 * torch.cos(2 * torch.pi * pop)), dim=1).reshape(-1, 1)
 
 
-def ackley(pop, a=20, b=0.2, c=2 * math.pi):
+def ackley(pop, device, a=20, b=0.2, c=2 * math.pi):
     dim = pop.size(dim=-1)
     first = -a * torch.exp(-b * torch.sqrt(1 / dim * torch.sum(torch.pow(pop, 2), dim=1)))
     second = torch.exp(1 / dim * torch.sum(torch.cos(c * pop), dim=1))
     return (first - second + a + math.exp(1)).reshape(-1, 1)
+
+def griewank(pop,device):
+    fr=4000
+    dim=pop.size(dim=-1)
+    j=torch.arange(1., dim+1,device=device)
+    return (torch.sum(torch.pow(pop,2),dim=1)/fr - torch.prod(torch.cos(pop/torch.sqrt(j)),dim=1) + 1 ).reshape(-1,1)
+    
+def sphere(pop,device):
+    n=pop.size(dim=-1)
+    return torch.sum(torch.pow(pop,2),dim=1).reshape(-1,1)
+
+def zakharov(pop,device):
+    dim=pop.size(dim=-1)
+    j=torch.arange(1., dim+1, device=device)
+    s2=torch.sum(j*pop, dim=1) / 2
+    return (torch.sum(torch.pow(pop,2),dim=1) + torch.pow(s2,2) + torch.pow(s2,2)).reshape(-1,1)
+
+# def zakharov(pop):
 
 
 def PSO(f, max_iter, n, dim, init_min_x, init_max_x, device):
@@ -36,7 +54,7 @@ def PSO(f, max_iter, n, dim, init_min_x, init_max_x, device):
     pbar = tqdm(total=max_iter)
     while iter < max_iter:
         # First calculate fitnesses
-        fitnesses = f(positions)
+        fitnesses = f(positions, device)
 
         # Update personal best
         personal_best_pos = torch.where(fitnesses < personal_bests, positions, personal_best_pos)
@@ -47,7 +65,7 @@ def PSO(f, max_iter, n, dim, init_min_x, init_max_x, device):
         best_pos = personal_best_pos[bestSol[1]].detach().clone()
         best_val = bestSol[0]
 
-        # print(best_pos, best_val)
+        print(best_val)
 
         # Velocity equation
         r1 = torch.rand(size=(n, dim), dtype=torch.float, device=device)  # random coeff 1 vector
@@ -63,6 +81,7 @@ def PSO(f, max_iter, n, dim, init_min_x, init_max_x, device):
 
         iter += 1
         pbar.update(1)
+    
 
     return best_val, best_pos
 
@@ -73,52 +92,68 @@ def execPSO(f, iter, n, dim, init_min, init_max, device):
     endTime = time.time()
     print(endTime - startTime)
 
-print("##### Rastrigin #####")
-print("10000 iter; 100 particles; 100 dim")
-execPSO(rastrigin, 10000, 100, 100, -5.12, 5.12, 'cuda')
-execPSO(rastrigin, 10000, 100, 100, -5.12, 5.12, 'cpu')
+# print("##### Rastrigin #####")
+# print("10000 iter; 100 particles; 100 dim")
+# execPSO(rastrigin, 10000, 100, 100, -5.12, 5.12, 'cuda')
+# execPSO(rastrigin, 10000, 100, 100, -5.12, 5.12, 'cpu')
 
-print("10000 iter; 500 particles; 100 dim")
-execPSO(rastrigin, 10000, 500, 100, -5.12, 5.12, 'cuda')
-execPSO(rastrigin, 10000, 500, 100, -5.12, 5.12, 'cpu')
+# print("10000 iter; 500 particles; 100 dim")
+# execPSO(rastrigin, 10000, 500, 100, -5.12, 5.12, 'cuda')
+# execPSO(rastrigin, 10000, 500, 100, -5.12, 5.12, 'cpu')
 
-print("10000 iter; 100 particles; 500 dim")
-execPSO(rastrigin, 10000, 100, 500, -5.12, 5.12, 'cuda')
-execPSO(rastrigin, 10000, 100, 500, -5.12, 5.12, 'cpu')
+# print("10000 iter; 100 particles; 500 dim")
+print("CPU")
+execPSO(griewank, 1000, 100, 100, -600, 600, 'cpu')
+print("GPU")
+execPSO(griewank, 1000, 100, 100, -600, 600, 'cuda')
 
-print("10000 iter; 1000 particles; 100 dim")
-execPSO(rastrigin, 10000, 1000, 100, -5.12, 5.12, 'cuda')
-execPSO(rastrigin, 10000, 1000, 100, -5.12, 5.12, 'cpu')
+# print("10000 iter; 500 particles; 100 dim")
+# print("CPU")
+# execPSO(rastrigin, 10000, 500, 100, -5.12, 5.12, 'cpu')
+# print("GPU")
+# execPSO(rastrigin, 10000, 500, 100, -5.12, 5.12, 'cuda')
 
-print("10000 iter; 100 particles; 1000 dim")
-execPSO(rastrigin, 10000, 100, 1000, -5.12, 5.12, 'cuda')
-execPSO(rastrigin, 10000, 100, 1000, -5.12, 5.12, 'cpu')
+# print("10000 iter; 500 particles; 500 dim")
+# print("CPU")
+# execPSO(rastrigin, 10000, 500, 500, -5.12, 5.12, 'cpu')
+# print("GPU")
+# execPSO(rastrigin, 10000, 500, 500, -5.12, 5.12, 'cuda')
 
-print("10000 iter; 1000 particles; 1000 dim")
-execPSO(rastrigin, 10000, 1000, 1000, -5.12, 5.12, 'cuda')
-execPSO(rastrigin, 10000, 1000, 1000, -5.12, 5.12, 'cpu')
 
-print("##### ACKLEY #####")
+
+
+# print("10000 iter; 100 particles; 1000 dim")
+# execPSO(rastrigin, 10000, 100, 1000, -5.12, 5.12, 'cuda')
+# execPSO(rastrigin, 10000, 100, 1000, -5.12, 5.12, 'cpu')
+
+# print("10000 iter; 1000 particles; 1000 dim")
+# print("CPU")
+# execPSO(rastrigin, 10000, 1000, 1000, -5.12, 5.12, 'cpu')
+# print("GPU")
+# execPSO(rastrigin, 10000, 1000, 1000, -5.12, 5.12, 'cuda')
+
+
+# print("##### ACKLEY #####")
 print("10000 iter; 100 particles; 100 dim")
 execPSO(ackley, 10000, 100, 100, -5.12, 5.12, 'cuda')
 execPSO(ackley, 10000, 100, 100, -5.12, 5.12, 'cpu')
 
-print("10000 iter; 500 particles; 100 dim")
-execPSO(ackley, 10000, 500, 100, -5.12, 5.12, 'cuda')
-execPSO(ackley, 10000, 500, 100, -5.12, 5.12, 'cpu')
+# print("10000 iter; 500 particles; 100 dim")
+# execPSO(ackley, 10000, 500, 100, -5.12, 5.12, 'cuda')
+# execPSO(ackley, 10000, 500, 100, -5.12, 5.12, 'cpu')
 
-print("10000 iter; 100 particles; 500 dim")
-execPSO(ackley, 10000, 100, 500, -5.12, 5.12, 'cuda')
-execPSO(ackley, 10000, 100, 500, -5.12, 5.12, 'cpu')
+# print("10000 iter; 100 particles; 500 dim")
+# execPSO(ackley, 10000, 100, 500, -5.12, 5.12, 'cuda')
+# execPSO(ackley, 10000, 100, 500, -5.12, 5.12, 'cpu')
 
-print("10000 iter; 1000 particles; 100 dim")
-execPSO(ackley, 10000, 1000, 100, -5.12, 5.12, 'cuda')
-execPSO(ackley, 10000, 1000, 100, -5.12, 5.12, 'cpu')
+# print("10000 iter; 1000 particles; 100 dim")
+# execPSO(ackley, 10000, 1000, 100, -5.12, 5.12, 'cuda')
+# execPSO(ackley, 10000, 1000, 100, -5.12, 5.12, 'cpu')
 
-print("10000 iter; 100 particles; 1000 dim")
-execPSO(ackley, 10000, 100, 1000, -5.12, 5.12, 'cuda')
-execPSO(ackley, 10000, 100, 1000, -5.12, 5.12, 'cpu')
+# print("10000 iter; 100 particles; 1000 dim")
+# execPSO(ackley, 10000, 100, 1000, -5.12, 5.12, 'cuda')
+# execPSO(ackley, 10000, 100, 1000, -5.12, 5.12, 'cpu')
 
-print("10000 iter; 1000 particles; 1000 dim")
-execPSO(ackley, 10000, 1000, 1000, -5.12, 5.12, 'cuda')
-execPSO(ackley, 10000, 1000, 1000, -5.12, 5.12, 'cpu')
+# print("10000 iter; 1000 particles; 1000 dim")
+# execPSO(ackley, 10000, 1000, 1000, -5.12, 5.12, 'cuda')
+# execPSO(ackley, 10000, 1000, 1000, -5.12, 5.12, 'cpu')
